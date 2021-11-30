@@ -33,11 +33,13 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 DWORD WINAPI ThreadProcNotepad(LPVOID params);
 DWORD WINAPI ThreadProcWebsite(LPVOID params);
 DWORD WINAPI ThreadProcCalc(LPVOID params);
+
 DWORD WINAPI  ButtonNotepad();
-DWORD WINAPI  ButtonWebsite();
+DWORD WINAPI  ButtonWeb();
 DWORD WINAPI  ButtonCalc();
+
 void StopThreadNotepad();
-void StopThreadWebsite();
+void StopThreadWeb();
 void StopThreadCalc();
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -155,10 +157,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             10, 30, 75, 23, hWnd, (HMENU)CMD_BUTTON_NOTEPAD, hInst, NULL);
         stopNotepad = CreateWindowW(L"Button", L"STOP", WS_VISIBLE | WS_CHILD | WS_BORDER,
             95, 30, 75, 23, hWnd, (HMENU)CMD_BUTTON_STOP_NOTEPAD, hInst, NULL);
-        butCalc = CreateWindowW(L"Button", L"Calc", WS_VISIBLE | WS_CHILD | WS_BORDER,
-            10, 60, 75, 23, hWnd, (HMENU)CMD_BUTTON_CALC, hInst, NULL);
+        butWebsite = CreateWindowW(L"Button", L"Web", WS_VISIBLE | WS_CHILD | WS_BORDER,
+            10, 60, 75, 23, hWnd, (HMENU)CMD_BUTTON_WEBSITE, hInst, NULL);
         stopWebsite = CreateWindowW(L"Button", L"STOP", WS_VISIBLE | WS_CHILD | WS_BORDER,
-            95, 60, 75, 23, hWnd, (HMENU)CMD_BUTTON_STOP_CALC, hInst, NULL);
+            95, 60, 75, 23, hWnd, (HMENU)CMD_BUTTON_STOP_WEBSITE, hInst, NULL);
+        butCalc = CreateWindowW(L"Button", L"Calc", WS_VISIBLE | WS_CHILD | WS_BORDER,
+            10, 90, 75, 23, hWnd, (HMENU)CMD_BUTTON_CALC, hInst, NULL);
+        stopCalc = CreateWindowW(L"Button", L"STOP", WS_VISIBLE | WS_CHILD | WS_BORDER,
+            95, 90, 75, 23, hWnd, (HMENU)CMD_BUTTON_STOP_CALC, hInst, NULL);
+
+
         break;
     case WM_COMMAND:
         {
@@ -170,6 +178,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 ButtonNotepad();
                 break;
             case CMD_BUTTON_WEBSITE:
+                ButtonWeb();
                 break;
             case CMD_BUTTON_CALC:
                 ButtonCalc();
@@ -177,12 +186,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case CMD_BUTTON_STOP_NOTEPAD:
                 StopThreadNotepad();
                 break;
+            case CMD_BUTTON_STOP_WEBSITE:
+                StopThreadWeb();
+                break;
             case CMD_BUTTON_STOP_CALC:
                 StopThreadCalc();
                 break;
-            case CMD_BUTTON_STOP_WEBSITE:
-
-                break;
+            
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
@@ -288,6 +298,54 @@ void StopThreadNotepad() {
     }
 }
 
+DWORD WINAPI ThreadProcWeb(LPVOID params) {
+    PROCESS_INFORMATION pinfoWeb = (PROCESS_INFORMATION&)params;
+    SendMessageW(list, LB_ADDSTRING, 100, (LPARAM)L"Web works!");
+    WaitForSingleObject(pinfoWeb.hProcess, INFINITE);
+
+    return 0;
+}
+
+DWORD WINAPI ButtonWeb() {
+    ZeroMemory(&sinfoWebsite, sizeof(STARTUPINFO));
+    ZeroMemory(&pinfoWebsite, sizeof(PROCESS_INFORMATION));
+    if (CreateProcessW(
+        L"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+        (LPWSTR)L"-url mystat.itstep.org",
+        NULL,
+        NULL,
+        TRUE,
+        0,
+        NULL,
+        NULL,
+        &sinfoWebsite,
+        &pinfoWebsite
+    )) {
+        processWebsite = TRUE;
+        SendMessageW(list, LB_ADDSTRING, 100, (LPARAM)L"Works");
+        WaitForSingleObject(pinfoWebsite.hProcess, INFINITE);
+    }
+    else {
+        SendMessageW(list, LB_ADDSTRING, 100, (LPARAM)L"Error!!!!!!!!!!!!!");
+    }
+    return 0;
+}
+
+void StopThreadWeb() {
+    if (processWebsite)
+    {
+        TerminateProcess(pinfoWebsite.hProcess, 0);
+        CloseHandle(pinfoWebsite.hThread);
+        CloseHandle(pinfoWebsite.hProcess);
+        SendMessageW(list, LB_ADDSTRING, 100, (LPARAM)L"Web stopped!");
+        processWebsite = FALSE;
+
+    }
+    else {
+        SendMessageW(list, LB_ADDSTRING, 100, (LPARAM)L"Web process doesn't exist!");
+    }
+}
+
 DWORD WINAPI ThreadProcCalc(LPVOID params) {
     PROCESS_INFORMATION pinfoCalc = (PROCESS_INFORMATION&)params;
     SendMessageW(list, LB_ADDSTRING, 100, (LPARAM)L"Calc works!");
@@ -301,11 +359,13 @@ DWORD WINAPI ButtonCalc() {
     ZeroMemory(&pinfoCalc, sizeof(PROCESS_INFORMATION));
     if (processCalc == FALSE)
     {
-        if (CreateProcessW(L"C:\\Windows\\WinSxS\\wow64_microsoft-windows-calc_31bf3856ad364e35_10.0.19041.1_none_6a03b910ee7a4073\\calc.exe", NULL, NULL, NULL, FALSE, 0, NULL, NULL,
-            &sinfoCalc, &pinfoCalc))
+        if (CreateProcessW(L"C:\\Windows\\calc.exe", NULL,
+            NULL, NULL, FALSE, 0, NULL, NULL,
+            &sinfoCalc, &pinfoCalc)
+            )
         {
             processCalc = TRUE;
-            CreateThread(NULL, 0, ThreadProcCalc, &pinfoCalc, 0, NULL);
+            CreateThread(NULL, 0, ThreadProcWeb, &pinfoWebsite, 0, NULL);
         }
         else
         {
@@ -332,4 +392,3 @@ void StopThreadCalc() {
         SendMessageW(list, LB_ADDSTRING, 100, (LPARAM)L"Calc process doesn't exist!");
     }
 }
-
